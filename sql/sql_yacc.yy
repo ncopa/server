@@ -5892,7 +5892,7 @@ default_collation:
 storage_engines:
           ident_or_text
           {
-            plugin_ref plugin= ha_resolve_by_name(thd, &$1,
+            st_plugin_int *plugin= ha_resolve_by_name(thd, &$1,
                                             thd->lex->create_info.tmp_table());
 
             if (plugin)
@@ -5916,7 +5916,7 @@ storage_engines:
 known_storage_engines:
           ident_or_text
           {
-            plugin_ref plugin;
+            st_plugin_int *plugin;
             if ((plugin= ha_resolve_by_name(thd, &$1, false)))
               $$= plugin_hton(plugin);
             else

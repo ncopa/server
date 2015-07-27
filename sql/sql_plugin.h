@@ -42,14 +42,6 @@ extern ulong dlopen_count;
 #include <my_sys.h>
 #include "sql_list.h"
 
-#ifdef DBUG_OFF
-#define plugin_ref_to_int(A) A
-#define plugin_int_to_ref(A) A
-#else
-#define plugin_ref_to_int(A) (A ? A[0] : NULL)
-#define plugin_int_to_ref(A) &(A)
-#endif
-
 /*
   the following flags are valid for plugin_init()
 */
@@ -120,14 +112,6 @@ struct st_plugin_int
 };
 
 
-/*
-  See intern_plugin_lock() for the explanation for the
-  conditionally defined plugin_ref type
-*/
-#ifdef DBUG_OFF
-typedef struct st_plugin_int *plugin_ref;
-#define plugin_ref_to_int(A) A
-#define plugin_int_to_ref(A) A
 #define plugin_decl(pi) ((pi)->plugin)
 #define plugin_dlib(pi) ((pi)->plugin_dl)
 #define plugin_data(pi,cast) ((cast)((pi)->data))
@@ -135,18 +119,6 @@ typedef struct st_plugin_int *plugin_ref;
 #define plugin_state(pi) ((pi)->state)
 #define plugin_load_option(pi) ((pi)->load_option)
 #define plugin_equals(p1,p2) ((p1) == (p2))
-#else
-typedef struct st_plugin_int **plugin_ref;
-#define plugin_ref_to_int(A) (A ? A[0] : NULL)
-#define plugin_int_to_ref(A) &(A)
-#define plugin_decl(pi) ((pi)[0]->plugin)
-#define plugin_dlib(pi) ((pi)[0]->plugin_dl)
-#define plugin_data(pi,cast) ((cast)((pi)[0]->data))
-#define plugin_name(pi) (&((pi)[0]->name))
-#define plugin_state(pi) ((pi)[0]->state)
-#define plugin_load_option(pi) ((pi)[0]->load_option)
-#define plugin_equals(p1,p2) ((p1) && (p2) && (p1)[0] == (p2)[0])
-#endif
 
 typedef int (*plugin_type_init)(struct st_plugin_int *);
 
@@ -164,11 +136,11 @@ void add_plugin_options(DYNAMIC_ARRAY *options, MEM_ROOT *mem_root);
 extern bool plugin_is_ready(const LEX_STRING *name, int type);
 #define my_plugin_lock_by_name(A,B,C) plugin_lock_by_name(A,B,C)
 #define my_plugin_lock(A,B) plugin_lock(A,B)
-extern plugin_ref plugin_lock(THD *thd, plugin_ref ptr);
-extern plugin_ref plugin_lock_by_name(THD *thd, const LEX_STRING *name,
+extern st_plugin_int *plugin_lock(THD *thd, st_plugin_int *ptr);
+extern st_plugin_int *plugin_lock_by_name(THD *thd, const LEX_STRING *name,
                                       int type);
-extern void plugin_unlock(THD *thd, plugin_ref plugin);
-extern void plugin_unlock_list(THD *thd, plugin_ref *list, uint count);
+extern void plugin_unlock(THD *thd, st_plugin_int *plugin);
+extern void plugin_unlock_list(THD *thd, st_plugin_int **list, uint count);
 extern bool mysql_install_plugin(THD *thd, const LEX_STRING *name,
                                  const LEX_STRING *dl);
 extern bool mysql_uninstall_plugin(THD *thd, const LEX_STRING *name,
@@ -182,7 +154,7 @@ extern SHOW_COMP_OPTION plugin_status(const char *name, size_t len, int type);
 extern bool check_valid_path(const char *path, size_t length);
 
 typedef my_bool (plugin_foreach_func)(THD *thd,
-                                      plugin_ref plugin,
+                                      st_plugin_int *plugin,
                                       void *arg);
 #define plugin_foreach(A,B,C,D) plugin_foreach_with_mask(A,B,C,PLUGIN_IS_READY,D)
 extern bool plugin_foreach_with_mask(THD *thd, plugin_foreach_func *func,

@@ -1235,7 +1235,7 @@ int ha_maria::open(const char *name, int mode, uint test_if_locked)
 
   for (i= 0; i < table->s->keys; i++)
   {
-    plugin_ref parser= table->key_info[i].parser;
+    st_plugin_int *parser= table->key_info[i].parser;
     if (table->key_info[i].flags & HA_USES_PARSER)
       file->s->keyinfo[i].parser=
         (struct st_mysql_ftparser *)plugin_decl(parser)->info;

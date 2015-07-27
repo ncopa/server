@@ -22,7 +22,7 @@
 void init_io_cache_encryption();
 
 /* there can be only one encryption plugin enabled */
-static plugin_ref encryption_manager= 0;
+static st_plugin_int *encryption_manager= 0;
 struct encryption_service_st encryption_handler;
 
 unsigned int has_key_id(uint id)
@@ -63,7 +63,7 @@ int initialize_encryption_plugin(st_plugin_int *plugin)
     return 1;
   }
 
-  encryption_manager= plugin_lock(NULL, plugin_int_to_ref(plugin));
+  encryption_manager= plugin_lock(NULL, plugin);
   st_mariadb_encryption *handle=
     (struct st_mariadb_encryption*) plugin->plugin->info;
 

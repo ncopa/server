@@ -4809,7 +4809,7 @@ static void add_file_to_crash_report(char *file)
   init_default_storage_engine_impl(#X, X, &global_system_variables.Y)
 
 static int init_default_storage_engine_impl(const char *opt_name,
-                                            char *engine_name, plugin_ref *res)
+                                            char *engine_name, st_plugin_int **res)
 {
   if (!engine_name)
   {
@@ -4818,7 +4818,7 @@ static int init_default_storage_engine_impl(const char *opt_name,
   }
 
   LEX_STRING name= { engine_name, strlen(engine_name) };
-  plugin_ref plugin;
+  st_plugin_int *plugin;
   handlerton *hton;
   if ((plugin= ha_resolve_by_name(0, &name, false)))
     hton= plugin_hton(plugin);

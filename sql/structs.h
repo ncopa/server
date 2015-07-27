@@ -20,7 +20,7 @@
 
 /* The old structures from unireg */
 
-#include "sql_plugin.h"                         /* plugin_ref */
+#include "sql_plugin.h"                         /* st_plugin_int */
 #include "sql_const.h"                          /* MAX_REFLENGTH */
 #include "my_time.h"                   /* enum_mysql_timestamp_type */
 #include "thr_lock.h"                  /* thr_lock_type */
@@ -121,7 +121,7 @@ typedef struct st_key {
   */
   union
   {
-    plugin_ref parser;                  /* Fulltext [pre]parser */
+    st_plugin_int *parser;              /* Fulltext [pre]parser */
     LEX_STRING *parser_name;            /* Fulltext [pre]parser name */
   };
   KEY_PART_INFO *key_part;

@@ -180,7 +180,7 @@ void delegates_destroy()
   Observer_info *info= iter++;                                          \
   for (; info; info= iter++)                                            \
   {                                                                     \
-    if (do_lock) plugin_lock(thd, plugin_int_to_ref(info->plugin_int)); \
+    if (do_lock) plugin_lock(thd, info->plugin_int);                    \
     if (((Observer *)info->observer)->f                                 \
         && ((Observer *)info->observer)->f args)                        \
     {                                                                   \

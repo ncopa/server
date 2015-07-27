@@ -322,8 +322,8 @@ static void unlock_variables(THD *thd, struct system_variables *vars);
 static void cleanup_variables(struct system_variables *vars);
 static void plugin_vars_free_values(sys_var *vars);
 static void restore_ptr_backup(uint n, st_ptr_backup *backup);
-static plugin_ref intern_plugin_lock(LEX *lex, plugin_ref plugin);
-static void intern_plugin_unlock(LEX *lex, plugin_ref plugin);
+static st_plugin_int *intern_plugin_lock(LEX *lex, st_plugin_int *plugin);
+static void intern_plugin_unlock(LEX *lex, st_plugin_int *plugin);
 static void reap_plugins(void);
 
 static void report_error(int where_to, uint error, ...)
@@ -945,53 +945,39 @@ SHOW_COMP_OPTION plugin_status(const char *name, size_t len, int type)
 }
 
 
-static plugin_ref intern_plugin_lock(LEX *lex, plugin_ref rc)
+static st_plugin_int *intern_plugin_lock(LEX *lex, st_plugin_int *rc)
 {
-  st_plugin_int *pi= plugin_ref_to_int(rc);
   DBUG_ENTER("intern_plugin_lock");
 
   mysql_mutex_assert_owner(&LOCK_plugin);
 
-  if (pi->state & (PLUGIN_IS_READY | PLUGIN_IS_UNINITIALIZED |
+  if (rc->state & (PLUGIN_IS_READY | PLUGIN_IS_UNINITIALIZED |
                    PLUGIN_IS_DELETED))
   {
-    plugin_ref plugin;
 #ifdef DBUG_OFF
     /*
       In optimized builds we don't do reference counting for built-in
       (plugin->plugin_dl == 0) plugins.
     */
-    if (!pi->plugin_dl)
-      DBUG_RETURN(pi);
-
-    plugin= pi;
-#else
-    /*
-      For debugging, we do an additional malloc which allows the
-      memory manager and/or valgrind to track locked references and
-      double unlocks to aid resolving reference counting problems.
-    */
-    if (!(plugin= (plugin_ref) my_malloc(sizeof(pi), MYF(MY_WME))))
-      DBUG_RETURN(NULL);
-
-    *plugin= pi;
+    if (!rc->plugin_dl)
+      DBUG_RETURN(rc);
 #endif
-    pi->ref_count++;
+    rc->ref_count++;
     DBUG_PRINT("lock",("thd: 0x%lx  plugin: \"%s\" LOCK ref_count: %d",
-                       (long) current_thd, pi->name.str, pi->ref_count));
+                       (long) current_thd, rc->name.str, rc->ref_count));
 
     if (lex)
-      insert_dynamic(&lex->plugins, (uchar*)&plugin);
-    DBUG_RETURN(plugin);
+      insert_dynamic(&lex->plugins, (uchar*) &rc);
+    DBUG_RETURN(rc);
   }
   DBUG_RETURN(NULL);
 }
 
 
-plugin_ref plugin_lock(THD *thd, plugin_ref ptr)
+st_plugin_int *plugin_lock(THD *thd, st_plugin_int *ptr)
 {
   LEX *lex= thd ? thd->lex : 0;
-  plugin_ref rc;
+  st_plugin_int *rc;
   DBUG_ENTER("plugin_lock");
 
 #ifdef DBUG_OFF
@@ -1012,27 +998,27 @@ plugin_ref plugin_lock(THD *thd, plugin_ref ptr)
   */
   if (! plugin_dlib(ptr))
   {
-    plugin_ref_to_int(ptr)->locks_total++;
+    ptr->locks_total++;
     DBUG_RETURN(ptr);
   }
 #endif
   mysql_mutex_lock(&LOCK_plugin);
-  plugin_ref_to_int(ptr)->locks_total++;
+  ptr->locks_total++;
   rc= intern_plugin_lock(lex, ptr);
   mysql_mutex_unlock(&LOCK_plugin);
   DBUG_RETURN(rc);
 }
 
 
-plugin_ref plugin_lock_by_name(THD *thd, const LEX_STRING *name, int type)
+st_plugin_int *plugin_lock_by_name(THD *thd, const LEX_STRING *name, int type)
 {
   LEX *lex= thd ? thd->lex : 0;
-  plugin_ref rc= NULL;
+  st_plugin_int *rc= NULL;
   st_plugin_int *plugin;
   DBUG_ENTER("plugin_lock_by_name");
   mysql_mutex_lock(&LOCK_plugin);
   if ((plugin= plugin_find_internal(name, type)))
-    rc= intern_plugin_lock(lex, plugin_int_to_ref(plugin));
+    rc= intern_plugin_lock(lex, plugin);
   mysql_mutex_unlock(&LOCK_plugin);
   DBUG_RETURN(rc);
 }
@@ -1294,10 +1280,9 @@ static void reap_plugins(void)
   my_afree(reap);
 }
 
-static void intern_plugin_unlock(LEX *lex, plugin_ref plugin)
+static void intern_plugin_unlock(LEX *lex, st_plugin_int *plugin)
 {
   int i;
-  st_plugin_int *pi;
   DBUG_ENTER("intern_plugin_unlock");
 
   mysql_mutex_assert_owner(&LOCK_plugin);
@@ -1305,13 +1290,9 @@ static void intern_plugin_unlock(LEX *lex, plugin_ref plugin)
   if (!plugin)
     DBUG_VOID_RETURN;
 
-  pi= plugin_ref_to_int(plugin);
-
 #ifdef DBUG_OFF
-  if (!pi->plugin_dl)
+  if (!plugin->plugin_dl)
     DBUG_VOID_RETURN;
-#else
-  my_free(plugin);
 #endif
 
   if (lex)
@@ -1322,7 +1303,7 @@ static void intern_plugin_unlock(LEX *lex, plugin_ref plugin)
       could be unlocked faster - optimizing for LIFO semantics.
     */
     for (i= lex->plugins.elements - 1; i >= 0; i--)
-      if (plugin == *dynamic_element(&lex->plugins, i, plugin_ref*))
+      if (plugin == *dynamic_element(&lex->plugins, i, st_plugin_int **))
       {
         delete_dynamic_element(&lex->plugins, i);
         break;
@@ -1330,20 +1311,20 @@ static void intern_plugin_unlock(LEX *lex, plugin_ref plugin)
     DBUG_ASSERT(i >= 0);
   }
 
-  DBUG_ASSERT(pi->ref_count);
-  pi->ref_count--;
+  DBUG_ASSERT(plugin->ref_count);
+  plugin->ref_count--;
 
   DBUG_PRINT("lock",("thd: 0x%lx  plugin: \"%s\" UNLOCK ref_count: %d",
-                     (long) current_thd, pi->name.str, pi->ref_count));
+                     (long) current_thd, plugin->name.str, plugin->ref_count));
 
-  if (pi->state == PLUGIN_IS_DELETED && !pi->ref_count)
+  if (plugin->state == PLUGIN_IS_DELETED && !plugin->ref_count)
     reap_needed= true;
 
   DBUG_VOID_RETURN;
 }
 
 
-void plugin_unlock(THD *thd, plugin_ref plugin)
+void plugin_unlock(THD *thd, st_plugin_int *plugin)
 {
   LEX *lex= thd ? thd->lex : 0;
   DBUG_ENTER("plugin_unlock");
@@ -1362,7 +1343,7 @@ void plugin_unlock(THD *thd, plugin_ref plugin)
 }
 
 
-void plugin_unlock_list(THD *thd, plugin_ref *list, uint count)
+void plugin_unlock_list(THD *thd, st_plugin_int **list, uint count)
 {
   LEX *lex= thd ? thd->lex : 0;
   DBUG_ENTER("plugin_unlock_list");
@@ -1630,7 +1611,7 @@ int plugin_init(int *argc, char **argv, int flags)
     not be null in any child thread.
   */
   global_system_variables.table_plugin=
-    intern_plugin_lock(NULL, plugin_int_to_ref(plugin_ptr));
+    intern_plugin_lock(NULL, plugin_ptr);
   DBUG_ASSERT(plugin_ptr->ref_count == 1);
 
   mysql_mutex_unlock(&LOCK_plugin);
@@ -2360,7 +2341,7 @@ bool plugin_foreach_with_mask(THD *thd, plugin_foreach_func *func,
     }
     plugin= plugins[idx];
     /* It will stop iterating on first engine error when "func" returns TRUE */
-    if (plugin && func(thd, plugin_int_to_ref(plugin), arg))
+    if (plugin && func(thd, plugin, arg))
         goto err;
   }
 
@@ -2401,7 +2382,7 @@ static bool plugin_dl_foreach_internal(THD *thd, st_plugin_dl *plugin_dl,
     mysql_mutex_unlock(&LOCK_plugin);
 
     plugin= &tmp;
-    if (func(thd, plugin_int_to_ref(plugin), arg))
+    if (func(thd, plugin, arg))
       return 1;
   }
   return 0;
@@ -2772,7 +2753,7 @@ sys_var *find_sys_var(THD *thd, const char *str, uint length)
 {
   sys_var *var;
   sys_var_pluginvar *pi= NULL;
-  plugin_ref plugin;
+  st_plugin_int *plugin;
   DBUG_ENTER("find_sys_var");
 
   mysql_mutex_lock(&LOCK_plugin);
@@ -2782,7 +2763,7 @@ sys_var *find_sys_var(THD *thd, const char *str, uint length)
   {
     mysql_rwlock_unlock(&LOCK_system_variables_hash);
     LEX *lex= thd ? thd->lex : 0;
-    if (!(plugin= intern_plugin_lock(lex, plugin_int_to_ref(pi->plugin))))
+    if (!(plugin= intern_plugin_lock(lex, pi->plugin)))
       var= NULL; /* failed to lock it, it must be uninstalling */
     else
     if (!(plugin_state(plugin) & PLUGIN_IS_READY))
@@ -3087,9 +3068,9 @@ static double *mysql_sys_var_double(THD* thd, int offset)
 
 void plugin_thdvar_init(THD *thd)
 {
-  plugin_ref old_table_plugin= thd->variables.table_plugin;
-  plugin_ref old_tmp_table_plugin= thd->variables.tmp_table_plugin;
-  plugin_ref old_enforced_table_plugin= thd->variables.enforced_table_plugin;
+  st_plugin_int *old_table_plugin= thd->variables.table_plugin;
+  st_plugin_int *old_tmp_table_plugin= thd->variables.tmp_table_plugin;
+  st_plugin_int *old_enforced_table_plugin= thd->variables.enforced_table_plugin;
   DBUG_ENTER("plugin_thdvar_init");
 
   // This function may be called many times per THD (e.g. on COM_CHANGE_USER)
@@ -3190,7 +3171,7 @@ static void cleanup_variables(struct system_variables *vars)
 void plugin_thdvar_cleanup(THD *thd)
 {
   uint idx;
-  plugin_ref *list;
+  st_plugin_int **list;
   DBUG_ENTER("plugin_thdvar_cleanup");
 
   mysql_mutex_lock(&LOCK_plugin);
@@ -3200,7 +3181,7 @@ void plugin_thdvar_cleanup(THD *thd)
 
   if ((idx= thd->lex->plugins.elements))
   {
-    list= ((plugin_ref*) thd->lex->plugins.buffer) + idx - 1;
+    list= ((st_plugin_int**) thd->lex->plugins.buffer) + idx - 1;
     DBUG_PRINT("info",("unlocking %d plugins", idx));
     while ((uchar*) list >= thd->lex->plugins.buffer)
       intern_plugin_unlock(NULL, *list--);

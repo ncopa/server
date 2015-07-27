@@ -102,14 +102,14 @@ static int commit_one_phase_2(THD *thd, bool all, THD_TRANS *trans,
                               bool is_real_trans);
 
 
-static plugin_ref ha_default_plugin(THD *thd)
+static st_plugin_int *ha_default_plugin(THD *thd)
 {
   if (thd->variables.table_plugin)
     return thd->variables.table_plugin;
   return my_plugin_lock(thd, global_system_variables.table_plugin);
 }
 
-static plugin_ref ha_default_tmp_plugin(THD *thd)
+static st_plugin_int *ha_default_tmp_plugin(THD *thd)
 {
   if (thd->variables.tmp_table_plugin)
     return thd->variables.tmp_table_plugin;
@@ -131,7 +131,7 @@ static plugin_ref ha_default_tmp_plugin(THD *thd)
 */
 handlerton *ha_default_handlerton(THD *thd)
 {
-  plugin_ref plugin= ha_default_plugin(thd);
+  st_plugin_int *plugin= ha_default_plugin(thd);
   DBUG_ASSERT(plugin);
   handlerton *hton= plugin_hton(plugin);
   DBUG_ASSERT(hton);
@@ -141,7 +141,7 @@ handlerton *ha_default_handlerton(THD *thd)
 
 handlerton *ha_default_tmp_handlerton(THD *thd)
 {
-  plugin_ref plugin= ha_default_tmp_plugin(thd);
+  st_plugin_int *plugin= ha_default_tmp_plugin(thd);
   DBUG_ASSERT(plugin);
   handlerton *hton= plugin_hton(plugin);
   DBUG_ASSERT(hton);
@@ -160,10 +160,10 @@ handlerton *ha_default_tmp_handlerton(THD *thd)
   RETURN
     pointer to storage engine plugin handle
 */
-plugin_ref ha_resolve_by_name(THD *thd, const LEX_STRING *name, bool tmp_table)
+st_plugin_int *ha_resolve_by_name(THD *thd, const LEX_STRING *name, bool tmp_table)
 {
   const LEX_STRING *table_alias;
-  plugin_ref plugin;
+  st_plugin_int *plugin;
 
 redo:
   /* my_strnncoll is a macro and gcc doesn't do early expansion of macro */
@@ -202,12 +202,12 @@ redo:
 }
 
 
-plugin_ref ha_lock_engine(THD *thd, const handlerton *hton)
+st_plugin_int *ha_lock_engine(THD *thd, const handlerton *hton)
 {
   if (hton)
   {
     st_plugin_int *plugin= hton2plugin[hton->slot];
-    return my_plugin_lock(thd, plugin_int_to_ref(plugin));
+    return my_plugin_lock(thd, plugin);
   }
   return NULL;
 }
@@ -215,7 +215,7 @@ plugin_ref ha_lock_engine(THD *thd, const handlerton *hton)
 
 handlerton *ha_resolve_by_legacy_type(THD *thd, enum legacy_db_type db_type)
 {
-  plugin_ref plugin;
+  st_plugin_int *plugin;
   switch (db_type) {
   case DB_TYPE_DEFAULT:
     return ha_default_handlerton(thd);
@@ -692,7 +692,7 @@ int ha_end()
   DBUG_RETURN(error);
 }
 
-static my_bool dropdb_handlerton(THD *unused1, plugin_ref plugin,
+static my_bool dropdb_handlerton(THD *unused1, st_plugin_int *plugin,
                                  void *path)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -708,7 +708,7 @@ void ha_drop_database(char* path)
 }
 
 
-static my_bool checkpoint_state_handlerton(THD *unused1, plugin_ref plugin,
+static my_bool checkpoint_state_handlerton(THD *unused1, st_plugin_int *plugin,
                                            void *disable)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -729,8 +729,9 @@ struct st_commit_checkpoint_request {
   void (*pre_hook)(void *);
 };
 
-static my_bool commit_checkpoint_request_handlerton(THD *unused1, plugin_ref plugin,
-                                           void *data)
+static my_bool commit_checkpoint_request_handlerton(THD *unused1,
+                                                    st_plugin_int *plugin,
+                                                    void *data)
 {
   st_commit_checkpoint_request *st= (st_commit_checkpoint_request *)data;
   handlerton *hton= plugin_hton(plugin);
@@ -762,7 +763,7 @@ ha_commit_checkpoint_request(void *cookie, void (*pre_hook)(void *))
 
 
 
-static my_bool closecon_handlerton(THD *thd, plugin_ref plugin,
+static my_bool closecon_handlerton(THD *thd, st_plugin_int *plugin,
                                    void *unused)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -789,7 +790,7 @@ void ha_close_connection(THD* thd)
   plugin_foreach(thd, closecon_handlerton, MYSQL_STORAGE_ENGINE_PLUGIN, 0);
 }
 
-static my_bool kill_handlerton(THD *thd, plugin_ref plugin,
+static my_bool kill_handlerton(THD *thd, st_plugin_int *plugin,
                                void *level)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -1717,7 +1718,7 @@ struct xahton_st {
   int result;
 };
 
-static my_bool xacommit_handlerton(THD *unused1, plugin_ref plugin,
+static my_bool xacommit_handlerton(THD *unused1, st_plugin_int *plugin,
                                    void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -1729,7 +1730,7 @@ static my_bool xacommit_handlerton(THD *unused1, plugin_ref plugin,
   return FALSE;
 }
 
-static my_bool xarollback_handlerton(THD *unused1, plugin_ref plugin,
+static my_bool xarollback_handlerton(THD *unused1, st_plugin_int *plugin,
                                      void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -1835,7 +1836,7 @@ struct xarecover_st
   bool dry_run;
 };
 
-static my_bool xarecover_handlerton(THD *unused, plugin_ref plugin,
+static my_bool xarecover_handlerton(THD *unused, st_plugin_int *plugin,
                                     void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -2204,7 +2205,7 @@ int ha_release_savepoint(THD *thd, SAVEPOINT *sv)
 }
 
 
-static my_bool snapshot_handlerton(THD *thd, plugin_ref plugin,
+static my_bool snapshot_handlerton(THD *thd, st_plugin_int *plugin,
                                    void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -2244,7 +2245,7 @@ int ha_start_consistent_snapshot(THD *thd)
 }
 
 
-static my_bool flush_handlerton(THD *thd, plugin_ref plugin,
+static my_bool flush_handlerton(THD *thd, st_plugin_int *plugin,
                                 void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
@@ -4830,7 +4831,7 @@ int ha_change_key_cache(KEY_CACHE *old_key_cache,
 }
 
 
-static my_bool discover_handlerton(THD *thd, plugin_ref plugin,
+static my_bool discover_handlerton(THD *thd, st_plugin_int *plugin,
                                    void *arg)
 {
   TABLE_SHARE *share= (TABLE_SHARE *)arg;
@@ -4901,7 +4902,7 @@ struct st_discover_existence_args
   bool frm_exists;
 };
 
-static my_bool discover_existence(THD *thd, plugin_ref plugin,
+static my_bool discover_existence(THD *thd, st_plugin_int *plugin,
                                   void *arg)
 {
   st_discover_existence_args *args= (st_discover_existence_args*)arg;
@@ -5018,8 +5019,7 @@ bool ha_table_exists(THD *thd, const char *db, const char *table_name,
         handlerton *ht= ha_resolve_by_legacy_type(thd, db_type);
         if ((*hton= ht))
           // verify that the table really exists
-          exists= discover_existence(thd,
-                             plugin_int_to_ref(hton2plugin[ht->slot]), &args);
+          exists= discover_existence(thd, hton2plugin[ht->slot], &args);
       }
       else
         *hton= view_pseudo_hton;
@@ -5160,7 +5160,7 @@ struct st_discover_names_args
   uint possible_duplicates;
 };
 
-static my_bool discover_names(THD *thd, plugin_ref plugin,
+static my_bool discover_names(THD *thd, st_plugin_int *plugin,
                               void *arg)
 {
   st_discover_names_args *args= (st_discover_names_args *)arg;
@@ -5441,7 +5441,7 @@ int handler::index_read_idx_map(uchar * buf, uint index, const uchar * key,
   @retval
     pointer		pointer to TYPELIB structure
 */
-static my_bool exts_handlerton(THD *unused, plugin_ref plugin,
+static my_bool exts_handlerton(THD *unused, st_plugin_int *plugin,
                                void *arg)
 {
   List<char> *found_exts= (List<char> *) arg;
@@ -5510,7 +5510,7 @@ static bool stat_print(THD *thd, const char *type, uint type_len,
 }
 
 
-static my_bool showstat_handlerton(THD *thd, plugin_ref plugin,
+static my_bool showstat_handlerton(THD *thd, st_plugin_int *plugin,
                                    void *arg)
 {
   enum ha_stat_type stat= *(enum ha_stat_type *) arg;

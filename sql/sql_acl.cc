@@ -203,9 +203,9 @@ LEX_STRING current_user_and_current_role= { C_STRING_WITH_LEN("*current_user_and
 
 
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
-static plugin_ref old_password_plugin;
+static st_plugin_int *old_password_plugin;
 #endif
-static plugin_ref native_password_plugin;
+static st_plugin_int *native_password_plugin;
 
 /* Classes */
 
@@ -876,7 +876,7 @@ static void free_acl_role(ACL_ROLE *role)
 
 struct validation_data { LEX_STRING *user, *password; };
 
-static my_bool do_validate(THD *, plugin_ref plugin, void *arg)
+static my_bool do_validate(THD *, st_plugin_int *plugin, void *arg)
 {
   struct validation_data *data= (struct validation_data *)arg;
   struct st_mariadb_password_validation *handler=
@@ -892,7 +892,7 @@ static bool validate_password(LEX_STRING *user, LEX_STRING *password)
                         MariaDB_PASSWORD_VALIDATION_PLUGIN, &data);
 }
 
-static my_bool check_if_exists(THD *, plugin_ref, void *)
+static my_bool check_if_exists(THD *, st_plugin_int *, void *)
 {
   return TRUE;
 }
@@ -11149,7 +11149,7 @@ struct MPVIO_EXT :public MYSQL_PLUGIN_VIO
   MYSQL_SERVER_AUTH_INFO auth_info;
   THD *thd;
   ACL_USER *acl_user;       ///< a copy, independent from acl_users array
-  plugin_ref plugin;        ///< what plugin we're under
+  st_plugin_int *plugin;    ///< what plugin we're under
   LEX_STRING db;            ///< db name from the handshake packet
   /** when restarting a plugin this caches the last client reply */
   struct {
@@ -12225,7 +12225,7 @@ static int do_auth_once(THD *thd, const LEX_STRING *auth_plugin_name,
 {
   int res= CR_OK, old_status= MPVIO_EXT::FAILURE;
   bool unlock_plugin= false;
-  plugin_ref plugin= NULL;
+  st_plugin_int *plugin= NULL;
 
   if (auth_plugin_name->str == native_password_plugin_name.str)
     plugin= native_password_plugin;

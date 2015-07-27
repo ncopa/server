@@ -3017,8 +3017,8 @@ bool ha_partition::setup_engine_array(MEM_ROOT *mem_root)
   if (!first_engine)
     goto err;
 
-  if (!(m_engine_array= (plugin_ref*)
-        alloc_root(&m_mem_root, m_tot_parts * sizeof(plugin_ref))))
+  if (!(m_engine_array= (st_plugin_int**)
+        alloc_root(&m_mem_root, m_tot_parts * sizeof(st_plugin_int*))))
     goto err;
 
   for (i= 0; i < m_tot_parts; i++)

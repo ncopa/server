@@ -663,7 +663,7 @@ struct TABLE_SHARE
   /* Stored record length. No generated-only virtual fields are included */
   ulong   stored_rec_length;            
 
-  plugin_ref db_plugin;			/* storage engine plugin */
+  st_plugin_int *db_plugin;             /* storage engine plugin */
   inline handlerton *db_type() const	/* table_type for handler */
   { 
     return is_view   ? view_pseudo_hton :
@@ -755,7 +755,7 @@ struct TABLE_SHARE
   char *partition_info_str;
   uint  partition_info_str_len;
   uint  partition_info_buffer_size;
-  plugin_ref default_part_plugin;
+  st_plugin_int *default_part_plugin;
 #endif
 
   /**

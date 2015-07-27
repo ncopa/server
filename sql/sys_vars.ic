@@ -1316,7 +1316,7 @@ public:
   Class specific constructor arguments:
     int plugin_type_arg (for example MYSQL_STORAGE_ENGINE_PLUGIN)
 
-  Backing store: plugin_ref
+  Backing store: st_plugin_int *
 
   @note
   these variables don't support command-line equivalents, any such
@@ -1341,7 +1341,7 @@ public:
     plugin_type(plugin_type_arg)
   {
     option.var_type= GET_STR;
-    SYSVAR_ASSERT(size == sizeof(plugin_ref));
+    SYSVAR_ASSERT(size == sizeof(st_plugin_int *));
     SYSVAR_ASSERT(getopt.id < 0); // force NO_CMD_LINE
   }
   bool do_check(THD *thd, set_var *var)
@@ -1353,7 +1353,7 @@ public:
     else
     {
       const LEX_STRING pname= { const_cast<char*>(res->ptr()), res->length() };
-      plugin_ref plugin;
+      st_plugin_int *plugin;
 
       // special code for storage engines (e.g. to handle historical aliases)
       if (plugin_type == MYSQL_STORAGE_ENGINE_PLUGIN)
@@ -1374,9 +1374,9 @@ public:
     }
     return false;
   }
-  void do_update(plugin_ref *valptr, plugin_ref newval)
+  void do_update(st_plugin_int **valptr, st_plugin_int *newval)
   {
-    plugin_ref oldval= *valptr;
+    st_plugin_int *oldval= *valptr;
     if (oldval != newval)
     {
       *valptr= newval ? my_plugin_lock(NULL, newval) : 0;
@@ -1385,29 +1385,29 @@ public:
   }
   bool session_update(THD *thd, set_var *var)
   {
-    do_update((plugin_ref*)session_var_ptr(thd),
+    do_update((st_plugin_int **) session_var_ptr(thd),
               var->save_result.plugin);
     return false;
   }
   bool global_update(THD *thd, set_var *var)
   {
-    do_update((plugin_ref*)global_var_ptr(),
+    do_update((st_plugin_int **) global_var_ptr(),
               var->save_result.plugin);
     return false;
   }
   void session_save_default(THD *thd, set_var *var)
   {
-    plugin_ref plugin= global_var(plugin_ref);
+    st_plugin_int *plugin= global_var(st_plugin_int *);
     var->save_result.plugin= plugin ? my_plugin_lock(thd, plugin) : 0;
   }
-  plugin_ref get_default(THD *thd)
+  st_plugin_int *get_default(THD *thd)
   {
     char *default_value= *reinterpret_cast<char**>(option.def_value);
     if (!default_value)
       return 0;
 
     LEX_STRING pname= { default_value, strlen(pname.str) };
-    plugin_ref plugin;
+    st_plugin_int *plugin;
 
     if (plugin_type == MYSQL_STORAGE_ENGINE_PLUGIN)
       plugin= ha_resolve_by_name(thd, &pname, false);
@@ -1422,15 +1422,15 @@ public:
     var->save_result.plugin= get_default(thd);
   }
 
-  uchar *valptr(THD *thd, plugin_ref plugin)
+  uchar *valptr(THD *thd, st_plugin_int *plugin)
   {
     return (uchar*)(plugin ? thd->strmake(plugin_name(plugin)->str,
                                           plugin_name(plugin)->length) : 0);
   }
   uchar *session_value_ptr(THD *thd, const LEX_STRING *base)
-  { return valptr(thd, session_var(thd, plugin_ref)); }
+  { return valptr(thd, session_var(thd, st_plugin_int *)); }
   uchar *global_value_ptr(THD *thd, const LEX_STRING *base)
-  { return valptr(thd, global_var(plugin_ref)); }
+  { return valptr(thd, global_var(st_plugin_int *)); }
   uchar *default_value_ptr(THD *thd)
   { return valptr(thd, get_default(thd)); }
 };

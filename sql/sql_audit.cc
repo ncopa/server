@@ -161,7 +161,7 @@ static const uint audit_handlers_count=
   @retval FALSE Always  
 */
 
-static my_bool acquire_plugins(THD *thd, plugin_ref plugin, void *arg)
+static my_bool acquire_plugins(THD *thd, st_plugin_int *plugin, void *arg)
 {
   ulong *event_class_mask= (ulong*) arg;
   st_mysql_audit *data= plugin_data(plugin, struct st_mysql_audit *);
@@ -184,7 +184,7 @@ static my_bool acquire_plugins(THD *thd, plugin_ref plugin, void *arg)
   {
     /* specify some reasonable initialization defaults */
     my_init_dynamic_array(&thd->audit_class_plugins,
-                          sizeof(plugin_ref), 16, 16, MYF(0));
+                          sizeof(st_plugin_int *), 16, 16, MYF(0));
   }
   
   /* lock the plugin and add it to the list */
@@ -250,12 +250,12 @@ void mysql_audit_notify(THD *thd, uint event_class, uint event_subtype, ...)
 
 void mysql_audit_release(THD *thd)
 {
-  plugin_ref *plugins, *plugins_last;
+  st_plugin_int **plugins, **plugins_last;
   
   if (!thd || !(thd->audit_class_plugins.elements))
     return;
   
-  plugins= (plugin_ref*) thd->audit_class_plugins.buffer;
+  plugins= (st_plugin_int **) thd->audit_class_plugins.buffer;
   plugins_last= plugins + thd->audit_class_plugins.elements;
   for (; plugins < plugins_last; plugins++)
   {
@@ -270,7 +270,7 @@ void mysql_audit_release(THD *thd)
   }
 
   /* Now we actually unlock the plugins */  
-  plugin_unlock_list(NULL, (plugin_ref*) thd->audit_class_plugins.buffer,
+  plugin_unlock_list(NULL, (st_plugin_int **) thd->audit_class_plugins.buffer,
                      thd->audit_class_plugins.elements);
   
   /* Reset the state of thread values */
@@ -416,7 +416,7 @@ int initialize_audit_plugin(st_plugin_int *plugin)
   THD *thd= current_thd;
   if (thd)
   {
-    acquire_plugins(thd, plugin_int_to_ref(plugin), data->class_mask);
+    acquire_plugins(thd, plugin, data->class_mask);
     add_audit_mask(thd->audit_class_mask, data->class_mask);
   }
 
@@ -433,7 +433,7 @@ int initialize_audit_plugin(st_plugin_int *plugin)
 
   @retval FALSE  always
 */
-static my_bool calc_class_mask(THD *thd, plugin_ref plugin, void *arg)
+static my_bool calc_class_mask(THD *thd, st_plugin_int *plugin, void *arg)
 {
   st_mysql_audit *data= plugin_data(plugin, struct st_mysql_audit *);
   if ((data= plugin_data(plugin, struct st_mysql_audit *)))
@@ -492,7 +492,7 @@ int finalize_audit_plugin(st_plugin_int *plugin)
   @retval FALSE  always
 */
 
-static my_bool plugins_dispatch(THD *thd, plugin_ref plugin, void *arg)
+static my_bool plugins_dispatch(THD *thd, st_plugin_int *plugin, void *arg)
 {
   const struct st_mysql_event_generic *event_generic=
     (const struct st_mysql_event_generic *) arg;
@@ -535,10 +535,10 @@ static void event_class_dispatch(THD *thd, unsigned int event_class,
   }
   else
   {
-    plugin_ref *plugins, *plugins_last;
+    st_plugin_int **plugins, **plugins_last;
 
     /* Use the cached set of audit plugins */
-    plugins= (plugin_ref*) thd->audit_class_plugins.buffer;
+    plugins= (st_plugin_int **) thd->audit_class_plugins.buffer;
     plugins_last= plugins + thd->audit_class_plugins.elements;
 
     for (; plugins < plugins_last; plugins++)

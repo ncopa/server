@@ -946,7 +946,7 @@ int TABLE_SHARE::init_from_binary_frm_image(THD *thd, bool write,
   KEY first_keyinfo;
   uint len;
   uint ext_key_parts= 0;
-  plugin_ref se_plugin= 0;
+  st_plugin_int *se_plugin= 0;
   keyinfo= &first_keyinfo;
   share->ext_key_parts= 0;
   MEM_ROOT **root_ptr, *old_root;
@@ -1181,7 +1181,7 @@ int TABLE_SHARE::init_from_binary_frm_image(THD *thd, bool write,
       name.str= (char*) next_chunk + 2;
       name.length= str_db_type_length;
 
-      plugin_ref tmp_plugin= ha_resolve_by_name(thd, &name, false);
+      st_plugin_int *tmp_plugin= ha_resolve_by_name(thd, &name, false);
       if (tmp_plugin != NULL && !plugin_equals(tmp_plugin, se_plugin))
       {
         if (se_plugin)

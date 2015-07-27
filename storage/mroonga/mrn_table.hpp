@@ -57,7 +57,7 @@ typedef struct st_mroonga_share
   int                 normalizer_length;
   char                *token_filters;
   int                 token_filters_length;
-  plugin_ref          plugin;
+  st_plugin_int       *plugin;
   handlerton          *hton;
   char                **index_table;
   char                **key_tokenizer;

@@ -164,7 +164,7 @@ static const bool UNSIGNED= true; ///< used below when inserting integers
 /**
   callback for fill_plugins()
 */
-static my_bool show_plugins(THD *thd, plugin_ref plugin, void *arg)
+static my_bool show_plugins(THD *thd, st_plugin_int *plugin, void *arg)
 {
   TABLE *table= (TABLE*) arg;
   char name[NAME_LEN*2];
@@ -185,7 +185,7 @@ static my_bool show_plugins(THD *thd, plugin_ref plugin, void *arg)
   name_len= my_snprintf(name, sizeof(name), "%s used",
                         plugin_name(plugin)->str); 
 
-  INSERT2(name, name_len, (plugin_ref_to_int(plugin)->locks_total, UNSIGNED));
+  INSERT2(name, name_len, (plugin->locks_total, UNSIGNED));
 
   return 0;
 }

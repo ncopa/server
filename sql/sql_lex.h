@@ -2416,7 +2416,7 @@ struct LEX: public Query_tables_list
 
   /* maintain a list of used plugins for this LEX */
   DYNAMIC_ARRAY plugins;
-  plugin_ref plugins_static_buffer[INITIAL_LEX_PLUGIN_LIST_SIZE];
+  st_plugin_int *plugins_static_buffer[INITIAL_LEX_PLUGIN_LIST_SIZE];
 
   bool text_string_is_7bit;
 
@@ -2721,7 +2721,8 @@ public:
   {
     free_set_stmt_mem_root();
     destroy_query_tables_list();
-    plugin_unlock_list(NULL, (plugin_ref *)plugins.buffer, plugins.elements);
+    plugin_unlock_list(NULL, (st_plugin_int **) plugins.buffer,
+                       plugins.elements);
     delete_dynamic(&plugins);
   }
 

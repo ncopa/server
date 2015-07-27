@@ -559,7 +559,7 @@ void lex_end(LEX *lex)
   /* release used plugins */
   if (lex->plugins.elements) /* No function call and no mutex if no plugins. */
   {
-    plugin_unlock_list(0, (plugin_ref*)lex->plugins.buffer, 
+    plugin_unlock_list(0, (st_plugin_int **) lex->plugins.buffer,
                        lex->plugins.elements);
   }
   reset_dynamic(&lex->plugins);
@@ -2649,7 +2649,7 @@ LEX::LEX()
     is_lex_started(0), limit_rows_examined_cnt(ULONGLONG_MAX)
 {
 
-  init_dynamic_array2(&plugins, sizeof(plugin_ref), plugins_static_buffer,
+  init_dynamic_array2(&plugins, sizeof(st_plugin_int *), plugins_static_buffer,
                       INITIAL_LEX_PLUGIN_LIST_SIZE,
                       INITIAL_LEX_PLUGIN_LIST_SIZE, 0);
   reset_query_tables_list(TRUE);

@@ -636,9 +636,9 @@ typedef struct system_variables
   my_bool binlog_annotate_row_events;
   my_bool binlog_direct_non_trans_update;
 
-  plugin_ref table_plugin;
-  plugin_ref tmp_table_plugin;
-  plugin_ref enforced_table_plugin;
+  st_plugin_int *table_plugin;
+  st_plugin_int *tmp_table_plugin;
+  st_plugin_int *enforced_table_plugin;
 
   /* Only charset part of these variables is sensible */
   CHARSET_INFO  *character_set_filesystem;
@@ -1646,7 +1646,7 @@ struct Ha_data
     NULL: engine is not bound to this thread
     non-NULL: engine is bound to this thread, engine shutdown forbidden
   */
-  plugin_ref lock;
+  st_plugin_int *lock;
   Ha_data() :ha_ptr(NULL) {}
 };
 

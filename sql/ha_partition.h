@@ -138,7 +138,7 @@ private:
   uchar *m_file_buffer;                 // Content of the .par file 
   char *m_name_buffer_ptr;		// Pointer to first partition name
   MEM_ROOT m_mem_root;
-  plugin_ref *m_engine_array;           // Array of types of the handlers
+  st_plugin_int **m_engine_array;       // Array of types of the handlers
   handler **m_file;                     // Array of references to handler inst.
   uint m_file_tot_parts;                // Debug
   handler **m_new_file;                 // Array of references to new handlers
