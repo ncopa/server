@@ -7678,7 +7678,7 @@ static SEL_TREE *get_func_mm_tree(RANGE_OPT_PARAM *param, Item_func *cond_func,
           per-statement mem_root (while thd->mem_root is currently pointing
           to mem_root local to range optimizer).
         */
-        Item *value_item= func->array->create_item();
+        Item *value_item= func->array->create_item(param->thd);
         param->thd->mem_root= tmp_root;
 
         if (func->array->count > NOT_IN_IGNORE_THRESHOLD || !value_item)
