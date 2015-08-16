@@ -4429,6 +4429,22 @@ sub extract_warning_lines ($$) {
      qr|InnoDB: Setting thread \d+ nice to \d+ failed, current nice \d+, errno 13|, # setpriority() fails under valgrind
      qr|Failed to setup SSL|,
      qr|SSL error: Failed to set ciphers to use|,
+     qr/mysqld: File*/,
+     qr/InnoDB: Tablespace id */,
+     qr/InnoDB: Error table encrypted but encryption service not available.*/,
+     qr/InnoDB: Could not find a valid tablespace file for*/,
+     qr/InnoDB: Tablespace open failed for*/,
+     qr/InnoDB: Failed to find tablespace for table*/,
+     qr/InnoDB: Space */,
+     qr|InnoDB: You may have to recover from a backup|,
+     qr|InnoDB: It is also possible that your operatingsystem has corrupted its own file cache|,
+     qr|InnoDB: and rebooting your computer removes the error|,
+     qr|InnoDB: If the corrupt page is an index page you can also try to|,
+     qr|nnoDB: fix the corruption by dumping, dropping, and reimporting|,
+     qr|InnoDB: the corrupt table. You can use CHECK|,
+     qr|InnoDB: TABLE to scan your table for corruption|,
+     qr/InnoDB: See also */
+
     );
 
   my $matched_lines= [];
